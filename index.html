@@ -1088,15 +1088,6 @@
                 total.toLocaleString() + ' 泰铢 ≈ ' + Math.round(total/5).toLocaleString() + '人民币';
         }
         
-        // 加载保存的内容
-        window.onload = () => {
-            const saved = localStorage.getItem('chiangmai-trip-content');
-            if (saved) {
-                document.querySelector('.content').innerHTML = saved;
-            }
-            loadAllNotes();
-        };
-        
         // 备注功能
         let currentNotesId = null;
         
@@ -1149,9 +1140,16 @@
         }
         
         // 点击模态框外部关闭
-        document.getElementById('notesModal').addEventListener('click', function(e) {
-            if (e.target === this) closeNotesModal();
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('notesModal').addEventListener('click', function(e) {
+                if (e.target === this) closeNotesModal();
+            });
         });
+        
+        // 加载保存的内容 - 只加载文本内容，不覆盖HTML结构
+        window.onload = () => {
+            loadAllNotes();
+        };
     </script>
 </body>
 </html>
