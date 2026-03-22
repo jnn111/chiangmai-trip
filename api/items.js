@@ -1,10 +1,33 @@
-// Vercel KV API - 获取/添加行程项目
-import { kv } from '@vercel/kv';
+import fs from 'fs';
+import path from 'path';
 
-const TRIP_ID = 'chiangmai-march-2024';
+const DATA_FILE = path.join(process.cwd(), 'data', 'items.json');
+
+// 确保数据目录存在
+function ensureDataDir() {
+  const dir = path.dirname(DATA_FILE);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify([]));
+  }
+}
+
+// 读取数据
+function readData() {
+  ensureDataDir();
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  return JSON.parse(data);
+}
+
+// 写入数据
+function writeData(data) {
+  ensureDataDir();
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+}
 
 export default async function handler(req, res) {
-  // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -15,13 +38,11 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // 获取所有项目
-      const items = await kv.get(`${TRIP_ID}:items`) || [];
+      const items = readData();
       return res.status(200).json({ items });
     }
 
     if (req.method === 'POST') {
-      // 添加新项目
       const { day, type, name, time, desc } = req.body;
       
       if (!name) {
@@ -38,20 +59,18 @@ export default async function handler(req, res) {
         createdAt: new Date().toISOString()
       };
 
-      const items = await kv.get(`${TRIP_ID}:items`) || [];
+      const items = readData();
       items.push(newItem);
-      await kv.set(`${TRIP_ID}:items`, items);
-
+      writeData(items);
+      
       return res.status(200).json({ item: newItem });
     }
 
     if (req.method === 'DELETE') {
-      // 删除项目
       const { id } = req.query;
-      let items = await kv.get(`${TRIP_ID}:items`) || [];
+      let items = readData();
       items = items.filter(item => item.id !== id);
-      await kv.set(`${TRIP_ID}:items`, items);
-
+      writeData(items);
       return res.status(200).json({ success: true });
     }
 

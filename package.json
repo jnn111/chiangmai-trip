@@ -6,9 +6,6 @@
     "dev": "vercel dev",
     "deploy": "vercel --prod"
   },
-  "dependencies": {
-    "@vercel/kv": "^1.0.0"
-  },
   "keywords": ["chiangmai", "travel", "thailand"],
   "author": "",
   "license": "MIT"

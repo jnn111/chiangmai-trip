@@ -1,7 +1,31 @@
-// Vercel KV API - 获取/保存备注
-import { kv } from '@vercel/kv';
+import fs from 'fs';
+import path from 'path';
 
-const TRIP_ID = 'chiangmai-march-2024';
+const DATA_FILE = path.join(process.cwd(), 'data', 'notes.json');
+
+// 确保数据目录存在
+function ensureDataDir() {
+  const dir = path.dirname(DATA_FILE);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({}));
+  }
+}
+
+// 读取数据
+function readData() {
+  ensureDataDir();
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  return JSON.parse(data);
+}
+
+// 写入数据
+function writeData(data) {
+  ensureDataDir();
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,25 +38,23 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // 获取所有备注
-      const notes = await kv.get(`${TRIP_ID}:notes`) || {};
+      const notes = readData();
       return res.status(200).json({ notes });
     }
 
     if (req.method === 'POST') {
-      // 保存备注
       const { spotId, content } = req.body;
       
       if (!spotId) {
         return res.status(400).json({ error: 'spotId required' });
       }
 
-      const notes = await kv.get(`${TRIP_ID}:notes`) || {};
+      const notes = readData();
       notes[spotId] = {
         content,
         updatedAt: new Date().toISOString()
       };
-      await kv.set(`${TRIP_ID}:notes`, notes);
+      writeData(notes);
 
       return res.status(200).json({ success: true });
     }
