@@ -1472,28 +1472,84 @@
             const dayCard = dayCards[item.day - 1];
             if (!dayCard || document.getElementById('item-' + item.id)) return;
             
+            // 咖啡馆类型 - 插入到 cafe-section
+            if (item.type === 'cafe') {
+                const cafeSection = dayCard.querySelector('.cafe-section');
+                if (cafeSection) {
+                    const div = document.createElement('div');
+                    div.className = 'cafe-item';
+                    div.id = 'item-' + item.id;
+                    div.dataset.itemId = item.id;
+                    div.innerHTML = `
+                        <button class="cafe-delete-btn" onclick="deleteItem('${item.id}')">×</button>
+                        <strong>${item.name}</strong>
+                        <span class="cafe-tag">新增</span>
+                        <span style="color:#666;margin-left:auto">${item.time || ''} ${item.desc ? '| ' + item.desc : ''}</span>
+                    `;
+                    cafeSection.appendChild(div);
+                    return;
+                }
+            }
+            
+            // 餐厅类型 - 插入到 food-box
+            if (item.type === 'restaurant') {
+                const foodBoxes = dayCard.querySelectorAll('.food-box');
+                const lastFoodBox = foodBoxes[foodBoxes.length - 1];
+                if (lastFoodBox) {
+                    const div = document.createElement('div');
+                    div.className = 'food-box';
+                    div.id = 'item-' + item.id;
+                    div.dataset.itemId = item.id;
+                    div.style.cssText = 'background:#f5f5f5;padding:10px;border-radius:8px;margin-top:8px;position:relative;';
+                    div.innerHTML = `
+                        <button class="food-delete-btn" onclick="deleteItem('${item.id}')">×</button>
+                        <strong>🍽️ ${item.name}</strong>
+                        ${item.time ? `<div style="font-size:0.75em;color:#666;">⏰ ${item.time}</div>` : ''}
+                        ${item.desc ? `<div style="font-size:0.8em;color:#555;">${item.desc}</div>` : ''}
+                    `;
+                    lastFoodBox.parentNode.insertBefore(div, lastFoodBox.nextSibling);
+                    return;
+                }
+            }
+            
+            // 小吃类型
+            if (item.type === 'snack') {
+                const foodBoxes = dayCard.querySelectorAll('.food-box');
+                const lastFoodBox = foodBoxes[foodBoxes.length - 1];
+                if (lastFoodBox) {
+                    const div = document.createElement('div');
+                    div.className = 'food-box';
+                    div.id = 'item-' + item.id;
+                    div.dataset.itemId = item.id;
+                    div.style.cssText = 'background:#fff3e0;padding:10px;border-radius:8px;margin-top:8px;position:relative;';
+                    div.innerHTML = `
+                        <button class="food-delete-btn" onclick="deleteItem('${item.id}')">×</button>
+                        <strong>🍢 ${item.name}</strong>
+                        ${item.time ? `<div style="font-size:0.75em;color:#666;">⏰ ${item.time}</div>` : ''}
+                        ${item.desc ? `<div style="font-size:0.8em;color:#555;">${item.desc}</div>` : ''}
+                    `;
+                    lastFoodBox.parentNode.insertBefore(div, lastFoodBox.nextSibling);
+                    return;
+                }
+            }
+            
+            // 景点/购物/其他 - 作为独立卡片插入
             const typeLabels = {
-                restaurant: '🍽️ 餐厅',
-                snack: '🍢 小吃',
-                cafe: '☕ 咖啡',
-                spot: '📍 景点',
-                shop: '🛍️ 购物',
-                other: '📝 其他'
+                spot: '📍',
+                shop: '🛍️',
+                other: '📝'
             };
             
             const div = document.createElement('div');
             div.className = 'custom-item';
             div.id = 'item-' + item.id;
+            div.style.cssText = 'background:#e3f2fd;border-radius:10px;padding:15px;margin:15px 0;border-left:3px solid #2196f3;position:relative;';
             div.innerHTML = `
                 <button class="delete-item-btn" onclick="deleteItem('${item.id}')">×</button>
-                <div class="custom-item-header">
-                    <span class="custom-item-name">${item.name}</span>
-                    <span class="custom-item-type">${typeLabels[item.type]}</span>
-                </div>
-                ${item.time ? `<div style="font-size:0.75em;color:#666;margin-bottom:3px;">⏰ ${item.time}</div>` : ''}
-                ${item.desc ? `<div class="custom-item-desc">${item.desc}</div>` : ''}
+                <div style="font-weight:bold;color:#1565c0;margin-bottom:5px;">${typeLabels[item.type] || '📝'} ${item.name}</div>
+                ${item.time ? `<div style="font-size:0.8em;color:#666;">⏰ ${item.time}</div>` : ''}
+                ${item.desc ? `<div style="font-size:0.85em;color:#555;margin-top:5px;">${item.desc}</div>` : ''}
             `;
-            
             dayCard.appendChild(div);
         }
         
