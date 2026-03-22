@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清迈4天3晚深度游 - 宁曼森萨因酒店</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #f5af19;
+            --secondary: #f12711;
+            --bg: #f8f9fa;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 1.6em; margin-bottom: 8px; }
+        .header p { opacity: 0.9; font-size: 0.9em; }
+        .hotel-info {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 0.85em;
+        }
+        .edit-mode-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: white;
+            color: var(--secondary);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .map-toggle {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        .map-section {
+            height: 0;
+            overflow: hidden;
+            transition: height 0.3s;
+            background: #f5f5f5;
+        }
+        .map-section.expanded { height: 350px; }
+        #map { width: 100%; height: 350px; }
+        .content { padding: 20px; }
+        .day-card {
+            background: #fff8e1;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 18px;
+            border-left: 4px solid var(--primary);
+        }
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .day-title { font-size: 1.15em; font-weight: bold; color: #333; }
+        .day-date { color: #666; font-size: 0.8em; }
+        .day-route-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.75em;
+        }
+        .spot-card {
+            background: white;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .spot-header {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .spot-image {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        .spot-info-header { flex: 1; }
+        .spot-name {
+            font-weight: bold;
+            font-size: 1em;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .spot-time {
+            color: var(--secondary);
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.65em;
+            margin-right: 3px;
+            margin-top: 4px;
+        }
+        .tag-must { background: #ff6b6b; color: white; }
+        .tag-food { background: #f9ca24; color: #333; }
+        .tag-coffee { background: #6c5ce7; color: white; }
+        .tag-view { background: #00b894; color: white; }
+        .tag-user { background: #2196f3; color: white; }
+        .tag-hot { background: #e84393; color: white; }
+        .spot-details {
+            font-size: 0.85em;
+            color: #555;
+            line-height: 1.6;
+        }
+        .transport-box {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            font-size: 0.8em;
+        }
+        .transport-box strong { color: #1565c0; }
+        .transport-time {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            margin-right: 5px;
+        }
+        .cafe-section {
+            background: #f3e5f5;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+        }
+        .cafe-section h4 {
+            color: #7b1fa2;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+        }
+        .cafe-item {
+            background: white;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cafe-tag {
+            background: #ce93d8;
+            color: white;
+            padding: 1px 5px;
+            border-radius: 6px;
+            font-size: 0.65em;
+            flex-shrink: 0;
+        }
+        .food-box {
+            background: #fff3e0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 8px 0;
+            border-left: 3px solid #ff9800;
+            font-size: 0.85em;
+        }
+        .food-box strong { color: #e65100; }
+        .budget-section {
+            background: #fff3e0;
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 18px;
+        }
+        .budget-section h3 { color: #e65100; margin-bottom: 12px; font-size: 1em; }
+        .budget-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #ffcc80;
+            font-size: 0.85em;
+        }
+        .budget-input {
+            width: 90px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: right;
+            font-size: 0.9em;
+        }
+        .total-row {
+            font-weight: bold;
+            font-size: 1em;
+            background: #ffe0b2;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .tips-box {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 18px;
+        }
+        .tips-box h4 { color: #1565c0; margin-bottom: 10px; font-size: 0.95em; }
+        .tips-content {
+            font-size: 0.85em;
+            line-height: 1.7;
+        }
+        .btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .share-section {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .share-url {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            color: #666;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .editable { outline: none; }
+        .editable:focus { background: #fffde7; }
+        [contenteditable="true"] { border-bottom: 2px dashed transparent; }
+        [contenteditable="true"]:hover { border-bottom-color: #f5af19; }
+        [contenteditable="true"]:focus { border-bottom-color: var(--secondary); }
+        .edit-hint {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; }
+            .map-section, .edit-mode-btn, .share-section { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="edit-mode-btn" onclick="toggleEdit()">✏️ 编辑</button>
+            <h1>🌴 清迈4天3晚深度游</h1>
+            <p>3月24日-27日 | 宁曼森萨因酒店</p>
+            <div class="hotel-info">
+                📍 <strong>Hotel Sensai Nimman</strong> | 110 Sirimangkalajarn Rd<br>
+                宁曼路核心位置 | 步行10分钟到Maya商场 | 距机场15分钟
+            </div>
+            <button class="map-toggle" onclick="toggleMap()">🗺️ 查看地图</button>
+        </div>
+        
+        <div class="map-section" id="mapSection">
+            <div id="map"></div>
+        </div>
+        
+        <div class="content">
+            <div class="edit-hint" id="editHint" style="display:none">
+                ✏️ 编辑模式已开启 - 点击任意文字即可修改
+            </div>
+            
+            <!-- Day 1 -->
+            <div class="day-card">
+                <div class="day-header">
+                    <div>
+                        <div class="day-title">📅 Day 1 - 抵达+古城+夜市</div>
+                        <div class="day-date">3月24日（周一）</div>
+                    </div>
+                    <button class="day-route-btn" onclick="showRoute(1)">查看路线</button>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7667" data-lng="98.9667">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=200" class="spot-image" alt="机场">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">✈️ 清迈国际机场到达</div>
+                            <div class="spot-time">09:50</div>
+                            <span class="tag tag-must">起点</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        办理入境、取行李、买电话卡（TrueMove 299泰铢含7天流量）、换汇2000泰铢应急
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">15-20分钟</span>
+                        <strong>机场→酒店：</strong>Grab 150-200泰铢 / 酒店接送服务
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7963" data-lng="98.9795">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1555212697-194d092e3b8f?w=200" class="spot-image" alt="酒店">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🏨 宁曼森萨因酒店入住</div>
+                            <div class="spot-time">11:00</div>
+                            <span class="tag tag-hot">小红书推荐</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        仅限成人酒店，宁曼路核心位置。步行5分钟到One Nimman，10分钟到Maya商场。
+                        <br>💡 提前邮件请求early check-in
+                    </div>
+                </div>
+                
+                <div class="cafe-section">
+                    <h4>☕ 午餐咖啡5选（酒店步行5-10分钟）</h4>
+                    <div class="cafe-item">
+                        <strong>1. Ristr8to</strong>
+                        <span class="cafe-tag">拉花冠军</span>
+                        <span style="color:#666;margin-left:auto">步行8分钟 | 独角兽拉花120฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>2. No.39 Cafe</strong>
+                        <span class="cafe-tag">网红滑梯</span>
+                        <span style="color:#666;margin-left:auto">Grab 5分钟 | 蓝色滑梯150฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>3. SS1254372 Cafe</strong>
+                        <span class="cafe-tag">复古文艺</span>
+                        <span style="color:#666;margin-left:auto">步行10分钟 | 古董家具100฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>4. Graph Cafe</strong>
+                        <span class="cafe-tag">工业风</span>
+                        <span style="color:#666;margin-left:auto">宁曼路 | 创意咖啡150฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>5. The Baristro at Ping River</strong>
+                        <span class="cafe-tag">河边白色</span>
+                        <span style="color:#666;margin-left:auto">Grab 10分钟 | 极简风180฿</span>
+                    </div>
+                </div>
+                
+                <div class="food-box">
+                    <strong>🍜 午餐推荐：</strong>Kao Soy Nimman（邓丽君最爱泰北咖喱面，酒店步行10分钟，人均150泰铢）
+                </div>
+                
+                <div class="spot-card" data-lat="18.7883" data-lng="98.9853">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=200" class="spot-image" alt="塔佩门">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🏛️ 塔佩门 Tha Phae Gate</div>
+                            <div class="spot-time">14:30-16:00</div>
+                            <span class="tag tag-must">必去</span>
+                            <span class="tag tag-hot">小红书爆款</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        清迈古城东门，标志性红砖墙。买鸽子食（20泰铢）拍慢动作视频超美！
+                        <br>📸 最佳拍摄时间：下午4-5点金色阳光
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">10-15分钟</span>
+                        <strong>酒店→塔佩门：</strong>Grab 80-100泰铢 / 双条车30泰铢/人
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7907" data-lng="98.9867">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1598935898639-33d885d54861?w=200" class="spot-image" alt="契迪龙寺">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🏯 契迪龙寺 Wat Chedi Luang</div>
+                            <div class="spot-time">16:00-17:30</div>
+                            <span class="tag tag-must">必去</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        古城内最壮观寺庙，大佛塔建于1441年。兰纳风格代表作。
+                        <br>🎫 门票：40泰铢
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">步行10分钟</span>
+                        <strong>塔佩门→契迪龙寺：</strong>步行800米，沿途逛Herb Basics
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7887" data-lng="98.9850">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=200" class="spot-image" alt="帕辛寺">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🏯 帕辛寺 Wat Phra Singh</div>
+                            <div class="spot-time">17:30-18:30</div>
+                            <span class="tag tag-must">必去</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        清迈地位最高寺庙，金碧辉煌。下午5点有免费冥想课程。
+                        <br>🎫 门票：20泰铢
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">步行8分钟</span>
+                        <strong>契迪龙寺→帕辛寺：</strong>步行600米
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7883" data-lng="98.9853">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=200" class="spot-image" alt="周日夜市">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🛍️ 周日夜市 Sunday Walking Street</div>
+                            <div class="spot-time">18:30-22:00</div>
+                            <span class="tag tag-must">必去</span>
+                            <span class="tag tag-food">美食</span>
+                            <span class="tag tag-hot">小红书爆款</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        全泰国最大夜市！从塔佩门到帕辛寺数公里长。手工艺品、美食、按摩一条街。
+                    </div>
+                    <div class="food-box">
+                        <strong>夜市必吃：</strong>Mango Tango芒果糯米饭 | 烤猪肉串10฿ | 椰子冰淇淋 | Khao Soi Islam
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">10-15分钟</span>
+                        <strong>回酒店：</strong>Grab 100-120泰铢（夜市人Grab会加价）/ 双条车40泰铢/人
+                    </div>
+                </div>
+                
+                <div class="spot-card">
+                    <div class="spot-header">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">💆 Let's Relax Spa</div>
+                            <div class="spot-time">21:00-22:30</div>
+                            <span class="tag tag-hot">小红书推荐</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        泰国连锁知名SPA，宁曼路有分店。手法专业，环境好。
+                        <br>💰 传统泰式按摩1200泰铢/2小时（需预约）
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">步行5分钟</span>
+                        <strong>酒店附近：</strong>One Nimman商场内
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Day 2 -->
+            <div class="day-card">
+                <div class="day-header">
+                    <div>
+                        <div class="day-title">📅 Day 2 - 粘粘瀑布+网红打卡</div>
+                        <div class="day-date">3月25日（周二）</div>
+                    </div>
+                    <button class="day-route-btn" onclick="showRoute(2)">查看路线</button>
+                </div>
+                
+                <div class="transport-box" style="margin-bottom:15px">
+                    <strong>🚗 今日交通：包车一日游（强烈推荐）</strong><br>
+                    <span class="transport-time">全天</span> 费用：2500-3000泰铢/车（4人座）<br>
+                    路线：酒店→粘粘瀑布→天使瀑布→大象咖啡→回宁曼路<br>
+                    💡 提前一天淘宝/Klook预订，或请酒店代订
+                </div>
+                
+                <div class="spot-card" data-lat="19.1167" data-lng="99.0500">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=200" class="spot-image" alt="粘粘瀑布">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">💦 粘粘瀑布 Bua Tong Waterfalls</div>
+                            <div class="spot-time">10:00-13:00</div>
+                            <span class="tag tag-user">指定</span>
+                            <span class="tag tag-must">必去</span>
+                            <span class="tag tag-hot">小红书爆款</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        <strong>独特体验！</strong>石灰岩地貌，可以攀爬的瀑布，像粘在地上不会滑。分3层，顶层有天然泳池。
+                        <br>🎫 <strong>门票：免费！</strong>
+                        <br><br>
+                        <strong>🎒 必备：</strong>泳衣（穿里面）、溯溪鞋（必须！）、防水袋、防晒霜
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">1.5小时</span>
+                        <strong>酒店→粘粘瀑布：</strong>56公里，包车最方便
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="19.1200" data-lng="99.0600">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=200" class="spot-image" alt="天使瀑布">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🦋 天使瀑布 Dantewada</div>
+                            <div class="spot-time">13:30-14:30</div>
+                            <span class="tag tag-view">仙境</span>
+                            <span class="tag tag-hot">小红书推荐</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        人工瀑布但超美，像仙境一样！有很多拍照装置，在这里下午茶休息。
+                        <br>🎫 门票：80泰铢（含一杯饮品）
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">15分钟</span>
+                        <strong>粘粘瀑布→天使瀑布：</strong>顺路，车程15分钟
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="19.1100" data-lng="99.0400">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?w=200" class="spot-image" alt="大象咖啡">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🐘 Elefin Farm & Cafe</div>
+                            <div class="spot-time">15:00-16:30</div>
+                            <span class="tag tag-hot">小红书爆款</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        可以喂大象、和大象拍照的咖啡厅！无表演无骑乘，ethical体验。
+                        <br>💰 买香蕉喂大象100泰铢/篮
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">20分钟</span>
+                        <strong>天使瀑布→大象咖啡：</strong>回程顺路
+                    </div>
+                </div>
+                
+                <div class="cafe-section">
+                    <h4>☕ 回程顺路咖啡5选</h4>
+                    <div class="cafe-item">
+                        <strong>1. The Baristro at Ping River</strong>
+                        <span class="cafe-tag">白色极简</span>
+                        <span style="color:#666;margin-left:auto">回程顺路 | 180฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>2. No.39 Cafe</strong>
+                        <span class="cafe-tag">蓝色滑梯</span>
+                        <span style="color:#666;margin-left:auto">宁曼路 | 150฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>3. SS1254372 Cafe</strong>
+                        <span class="cafe-tag">复古</span>
+                        <span style="color:#666;margin-left:auto">宁曼路 | 120฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>4. Graph Cafe</strong>
+                        <span class="cafe-tag">工业风</span>
+                        <span style="color:#666;margin-left:auto">宁曼路 | 150฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>5. The Coffee Club</strong>
+                        <span class="cafe-tag">连锁稳定</span>
+                        <span style="color:#666;margin-left:auto">Maya商场 | 150฿</span>
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7963" data-lng="98.9795">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1555212697-194d092e3b8f?w=200" class="spot-image" alt="宁曼路">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🌟 宁曼路夜景+One Nimman</div>
+                            <div class="spot-time">17:30-22:00</div>
+                            <span class="tag tag-hot">小红书爆款</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        回酒店休息后，晚上逛宁曼路。One Nimman有灯光秀，Maya商场顶楼看夜景。
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">步行5分钟</span>
+                        <strong>酒店→One Nimman：</strong>就在旁边！
+                    </div>
+                </div>
+                
+                <div class="food-box">
+                    <strong>🍽️ 晚餐推荐：</strong><br>
+                    1. <strong>Kao Soy Nimman</strong> - 邓丽君最爱，酒店步行10分钟<br>
+                    2. <strong>Tong Tem Toh</strong> - 泰北菜烤猪肉，人均300฿<br>
+                    3. <strong>Anchan Noodle</strong> - 蝶豆花蓝色面条，拍照超美
+                </div>
+            </div>
+            
+            <!-- Day 3 -->
+            <div class="day-card">
+                <div class="day-header">
+                    <div>
+                        <div class="day-title">📅 Day 3 - 艺术村+大象+素贴山</div>
+                        <div class="day-date">3月26日（周三）</div>
+                    </div>
+                    <button class="day-route-btn" onclick="showRoute(3)">查看路线</button>
+                </div>
+                
+                <div class="transport-box" style="margin-bottom:15px">
+                    <strong>🚗 今日交通：</strong><br>
+                    上午：Grab到艺术村（150泰铢，20分钟）<br>
+                    下午：包车半日（艺术村→大象营→素贴山→回酒店）1500泰铢
+                </div>
+                
+                <div class="spot-card" data-lat="18.8200" data-lng="98.9700">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1513519245088-0e12902e35ca?w=200" class="spot-image" alt="艺术村">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🎨 艺术村 Baan Kang Wat</div>
+                            <div class="spot-time">09:30-12:30</div>
+                            <span class="tag tag-user">指定</span>
+                            <span class="tag tag-must">必去</span>
+                            <span class="tag tag-hot">小红书推荐</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        手作艺术村，10+独立工作室。可体验陶艺、编织、银饰制作。
+                        <br>🎫 <strong>门票：免费</strong>
+                        <br>推荐：Monsoon Tea（泰北茶）、Uncle Nan's Pottery（陶艺体验400฿）
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">20分钟</span>
+                        <strong>酒店→艺术村：</strong>Grab 150泰铢（素贴山脚下）
+                    </div>
+                </div>
+                
+                <div class="cafe-section">
+                    <h4>☕ 艺术村咖啡5选</h4>
+                    <div class="cafe-item">
+                        <strong>1. TEDS Coffee</strong>
+                        <span class="cafe-tag">英式花园</span>
+                        <span style="color:#666;margin-left:auto">艺术村内 | 150฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>2. The Baristro at Ping River</strong>
+                        <span class="cafe-tag">白色极简</span>
+                        <span style="color:#666;margin-left:auto">附近 | 180฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>3. Akha Ama La Fattoria</strong>
+                        <span class="cafe-tag">农场风</span>
+                        <span style="color:#666;margin-left:auto">步行5分钟 | 120฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>4. Clay Studio Coffee</strong>
+                        <span class="cafe-tag">陶艺</span>
+                        <span style="color:#666;margin-left:auto">艺术村旁 | 120฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>5. Magokoro Teahouse</strong>
+                        <span class="cafe-tag">日式</span>
+                        <span style="color:#666;margin-left:auto">艺术村内 | 150฿</span>
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.8300" data-lng="98.9600">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?w=200" class="spot-image" alt="大象营">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🐘 大象保护营半日体验</div>
+                            <div class="spot-time">14:00-17:00</div>
+                            <span class="tag tag-must">推荐</span>
+                            <span class="tag tag-hot">小红书必去</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        Ethical体验！喂食、洗澡、无表演无骑乘。
+                        <br>推荐：Kanta Elephant Sanctuary（1800฿）/ Elephant Nature Park（2500฿）
+                        <br>💡 提前预订，穿深色衣服会弄脏
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">15分钟</span>
+                        <strong>艺术村→大象营：</strong>车程15分钟，顺路
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.8050" data-lng="98.9210">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=200" class="spot-image" alt="素贴山">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🌄 素贴山双龙寺日落</div>
+                            <div class="spot-time">17:30-19:00</div>
+                            <span class="tag tag-must">必去</span>
+                            <span class="tag tag-view">日落</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        金色佛塔+清迈全景+夕阳！爬306级台阶或坐电梯（20฿）。
+                        <br>🎫 门票：30泰铢 | 🧥 山上较凉，带外套
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">40分钟</span>
+                        <strong>大象营→素贴山：</strong>车程40分钟，双条车拼车100฿/人下山
+                    </div>
+                </div>
+                
+                <div class="food-box">
+                    <strong>🍽️ 晚餐：</strong>酒店附近SP Chicken烤鸡、Dash! Restaurant泰北创意菜
+                </div>
+            </div>
+            
+            <!-- Day 4 -->
+            <div class="day-card">
+                <div class="day-header">
+                    <div>
+                        <div class="day-title">📅 Day 4 - 购物+离别</div>
+                        <div class="day-date">3月27日（周四）| 19:40返程</div>
+                    </div>
+                    <button class="day-route-btn" onclick="showRoute(4)">查看路线</button>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7900" data-lng="99.0000">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1555212697-194d092e3b8f?w=200" class="spot-image" alt="瓦洛洛">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">🛍️ 瓦洛洛市场 Warorot Market</div>
+                            <div class="spot-time">09:30-11:30</div>
+                            <span class="tag tag-must">买手信</span>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        <strong>买手信最佳地点！</strong>比夜市便宜一半。
+                        <br>芒果干500g约150฿、榴莲干、泰式奶茶粉、泰丝围巾
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">15分钟</span>
+                        <strong>酒店→瓦洛洛：</strong>Grab 80-100泰铢
+                    </div>
+                </div>
+                
+                <div class="cafe-section">
+                    <h4>☕ 离别前咖啡5选（买豆带走）</h4>
+                    <div class="cafe-item">
+                        <strong>1. Akha Ama Coffee</strong>
+                        <span class="cafe-tag">买豆</span>
+                        <span style="color:#666;margin-left:auto">塔佩门附近 | 250฿/包</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>2. Ristr8to</strong>
+                        <span class="cafe-tag">最后打卡</span>
+                        <span style="color:#666;margin-left:auto">酒店附近 | 150฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>3. Graph Cafe</strong>
+                        <span class="cafe-tag">拍照</span>
+                        <span style="color:#666;margin-left:auto">宁曼路 | 150฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>4. Fern Forest Cafe</strong>
+                        <span class="cafe-tag">森林系</span>
+                        <span style="color:#666;margin-left:auto">古城 | 200฿</span>
+                    </div>
+                    <div class="cafe-item">
+                        <strong>5. Catmosphere Cat Cafe</strong>
+                        <span class="cafe-tag">猫咪</span>
+                        <span style="color:#666;margin-left:auto">爱猫必去 | 150฿</span>
+                    </div>
+                </div>
+                
+                <div class="spot-card" data-lat="18.7667" data-lng="98.9667">
+                    <div class="spot-header">
+                        <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=200" class="spot-image" alt="机场">
+                        <div class="spot-info-header">
+                            <div class="spot-name" contenteditable="false">✈️ 清迈机场返程</div>
+                            <div class="spot-time">19:40</div>
+                        </div>
+                    </div>
+                    <div class="spot-details" contenteditable="false">
+                        提前2.5小时出发，机场有King Power免税店可补货。
+                    </div>
+                    <div class="transport-box">
+                        <span class="transport-time">15-20分钟</span>
+                        <strong>酒店→机场：</strong>Grab 150-200泰铢（提前叫车）
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 预算 -->
+            <div class="budget-section">
+                <h3>💰 预算计算器（点击修改）</h3>
+                <div class="budget-row">
+                    <span>🏨 酒店（3晚，宁曼森萨因）</span>
+                    <input type="number" class="budget-input" value="9000" onchange="calcTotal()" id="hotel">
+                </div>
+                <div class="budget-row">
+                    <span>🎫 门票+活动</span>
+                    <input type="number" class="budget-input" value="4500" onchange="calcTotal()" id="tickets">
+                </div>
+                <div class="budget-row">
+                    <span>🍜 餐饮</span>
+                    <input type="number" class="budget-input" value="3500" onchange="calcTotal()" id="food">
+                </div>
+                <div class="budget-row">
+                    <span>🚗 交通（包车+Grab）</span>
+                    <input type="number" class="budget-input" value="4500" onchange="calcTotal()" id="transport">
+                </div>
+                <div class="budget-row">
+                    <span>☕ 咖啡</span>
+                    <input type="number" class="budget-input" value="2000" onchange="calcTotal()" id="coffee">
+                </div>
+                <div class="budget-row">
+                    <span>🛍️ 购物</span>
+                    <input type="number" class="budget-input" value="3000" onchange="calcTotal()" id="shopping">
+                </div>
+                <div class="total-row">
+                    <span>预计总花费</span>
+                    <span id="total">26,500 泰铢 ≈ 5,300人民币</span>
+                </div>
+            </div>
+            
+            <!-- 贴士 -->
+            <div class="tips-box">
+                <h4>💡 实用贴士</h4>
+                <div class="tips-content" contenteditable="false">
+                    <strong>📱 通讯：</strong>机场买电话卡299泰铢=7天无限流量<br>
+                    <strong>💱 换汇：</strong>SuperRich汇率最好，1人民币≈5泰铢<br>
+                    <strong>🚗 交通：</strong>Grab最方便，双条车古城内20-30฿/人<br>
+                    <strong>🙏 寺庙：</strong>穿长裤/长裙，脱鞋进入<br>
+                    <strong>⚠️ 注意：</strong>不要用左手递东西、不要摸别人头部
+                </div>
+            </div>
+            
+            <!-- 分享 -->
+            <div class="share-section">
+                <h4>📤 分享给朋友</h4>
+                <p style="font-size:0.8em;color:#666;margin:10px 0">
+                    部署到Vercel后，朋友可以通过链接查看和编辑
+                </p>
+                <button class="btn" onclick="window.print()">🖨️ 打印PDF</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let map, isEditMode = false;
+        
+        function toggleMap() {
+            const section = document.getElementById('mapSection');
+            const btn = document.querySelector('.map-toggle');
+            if (section.classList.contains('expanded')) {
+                section.classList.remove('expanded');
+                btn.textContent = '🗺️ 查看地图';
+            } else {
+                section.classList.add('expanded');
+                btn.textContent = '✕ 收起地图';
+                if (!map) initMap();
+                else setTimeout(() => map.invalidateSize(), 100);
+            }
+        }
+        
+        function initMap() {
+            map = L.map('map').setView([18.80, 98.97], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            
+            const colors = {1:'#ff6b6b',2:'#4ecdc4',3:'#45b7d1',4:'#f9ca24'};
+            const spots = [
+                {name:'机场',lat:18.7667,lng:98.9667,day:1},
+                {name:'宁曼森萨因酒店',lat:18.7963,lng:98.9795,day:1},
+                {name:'塔佩门',lat:18.7883,lng:98.9853,day:1},
+                {name:'契迪龙寺',lat:18.7907,lng:98.9867,day:1},
+                {name:'帕辛寺',lat:18.7887,lng:98.9850,day:1},
+                {name:'粘粘瀑布',lat:19.1167,lng:99.0500,day:2},
+                {name:'天使瀑布',lat:19.1200,lng:99.0600,day:2},
+                {name:'艺术村',lat:18.8200,lng:98.9700,day:3},
+                {name:'素贴山',lat:18.8050,lng:98.9210,day:3},
+                {name:'瓦洛洛市场',lat:18.7900,lng:99.0000,day:4}
+            ];
+            
+            spots.forEach(s => {
+                L.circleMarker([s.lat,s.lng],{radius:10,fillColor:colors[s.day],color:'#fff',weight:2,fillOpacity:0.9})
+                    .addTo(map).bindPopup(`<strong>${s.name}</strong>`);
+            });
+        }
+        
+        function showRoute(day) {
+            toggleMap();
+            const centers = {1:[18.788,98.98],2:[18.95,99.02],3:[18.81,98.95],4:[18.778,98.983]};
+            if (map) setTimeout(() => map.setView(centers[day], day===2?11:13), 300);
+        }
+        
+        function toggleEdit() {
+            isEditMode = !isEditMode;
+            const btn = document.querySelector('.edit-mode-btn');
+            const hint = document.getElementById('editHint');
+            const editables = document.querySelectorAll('[contenteditable]');
+            
+            if (isEditMode) {
+                btn.textContent = '✓ 完成';
+                hint.style.display = 'block';
+                editables.forEach(el => el.setAttribute('contenteditable', 'true'));
+            } else {
+                btn.textContent = '✏️ 编辑';
+                hint.style.display = 'none';
+                editables.forEach(el => el.setAttribute('contenteditable', 'false'));
+                saveContent();
+            }
+        }
+        
+        function saveContent() {
+            // 保存到localStorage
+            const content = document.querySelector('.content').innerHTML;
+            localStorage.setItem('chiangmai-trip-content', content);
+            alert('修改已保存！');
+        }
+        
+        function calcTotal() {
+            const total = ['hotel','tickets','food','transport','coffee','shopping']
+                .reduce((sum, id) => sum + (parseInt(document.getElementById(id).value) || 0), 0);
+            document.getElementById('total').textContent = 
+                total.toLocaleString() + ' 泰铢 ≈ ' + Math.round(total/5).toLocaleString() + '人民币';
+        }
+        
+        // 加载保存的内容
+        window.onload = () => {
+            const saved = localStorage.getItem('chiangmai-trip-content');
+            if (saved) {
+                document.querySelector('.content').innerHTML = saved;
+            }
+        };
+    </script>
+</body>
+</html>

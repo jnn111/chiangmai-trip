@@ -1,0 +1,12 @@
+{
+  "name": "chiangmai-trip",
+  "version": "1.0.0",
+  "description": "清迈4天3晚旅游攻略 - 宁曼森萨因酒店",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["chiangmai", "travel", "thailand"],
+  "author": "",
+  "license": "MIT"
+}
