@@ -1442,11 +1442,17 @@
         }
         
         async function apiAddItem(item) {
+            console.log('API_URL:', API_URL);
             const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ item })
             });
+            if (!res.ok) {
+                const error = await res.text();
+                console.error('API Error:', res.status, error);
+                throw new Error(`HTTP ${res.status}: ${error}`);
+            }
             return res.json();
         }
         
@@ -1494,15 +1500,18 @@
             
             try {
                 const result = await apiAddItem({ day, type, name, time, desc });
+                console.log('API result:', result);
                 if (result.item) {
                     renderCustomItem(result.item);
                     closeAddItemModal();
                     showSyncStatus('✓ 已同步');
+                } else if (result.error) {
+                    throw new Error(result.error);
                 }
             } catch (err) {
                 console.error('保存失败:', err);
                 showSyncStatus('✗ 保存失败');
-                alert('保存失败，请重试');
+                alert('保存失败: ' + err.message);
             }
         }
         
