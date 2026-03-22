@@ -6,6 +6,9 @@
     <title>清迈4天3晚深度游 - 宁曼森萨因酒店</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -323,6 +326,82 @@
         .notes-content.empty {
             color: #999;
             font-style: italic;
+        }
+        .add-item-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .custom-item {
+            background: #e8f5e9;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 10px 0;
+            border-left: 3px solid #4caf50;
+            position: relative;
+        }
+        .custom-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .custom-item-name {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .custom-item-type {
+            background: #4caf50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.65em;
+        }
+        .custom-item-desc {
+            font-size: 0.85em;
+            color: #555;
+        }
+        .delete-item-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.7em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sync-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            z-index: 100;
+            display: none;
+        }
+        .sync-status.show {
+            display: block;
+        }
+        .sync-status.syncing {
+            background: #ff9800;
         }
         .notes-modal {
             display: none;
@@ -986,6 +1065,34 @@
                 </div>
             </div>
             
+            <!-- 添加项目模态框 -->
+            <div class="notes-modal" id="addItemModal">
+                <div class="notes-modal-content">
+                    <div class="notes-modal-title">➕ 添加新行程</div>
+                    <select id="itemDay" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid #ddd;">
+                        <option value="1">Day 1 - 3月24日</option>
+                        <option value="2">Day 2 - 3月25日</option>
+                        <option value="3">Day 3 - 3月26日</option>
+                        <option value="4">Day 4 - 3月27日</option>
+                    </select>
+                    <select id="itemType" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid #ddd;">
+                        <option value="restaurant">🍽️ 餐厅</option>
+                        <option value="snack">🍢 小吃</option>
+                        <option value="cafe">☕ 咖啡</option>
+                        <option value="spot">📍 景点</option>
+                        <option value="shop">🛍️ 购物</option>
+                        <option value="other">📝 其他</option>
+                    </select>
+                    <input type="text" id="itemName" placeholder="名称（如：Kao Soy Nimman）" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid #ddd;">
+                    <input type="text" id="itemTime" placeholder="时间（如：12:00-13:30）" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid #ddd;">
+                    <textarea id="itemDesc" placeholder="描述、地址、价格等..." style="width:100%;min-height:80px;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid #ddd;resize:vertical;"></textarea>
+                    <div class="notes-modal-btns">
+                        <button class="notes-modal-btn cancel" onclick="closeAddItemModal()">取消</button>
+                        <button class="notes-modal-btn save" onclick="saveNewItem()">添加</button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 备注模态框 -->
             <div class="notes-modal" id="notesModal">
                 <div class="notes-modal-content">
@@ -1002,15 +1109,39 @@
             <div class="share-section">
                 <h4>📤 分享给朋友</h4>
                 <p style="font-size:0.8em;color:#666;margin:10px 0">
-                    部署到Vercel后，朋友可以通过链接查看和编辑
+                    朋友可以通过链接查看和编辑，数据实时同步
                 </p>
-                <button class="btn" onclick="window.print()">🖨️ 打印PDF</button>
+                <button class="btn" onclick="openAddItemModal()">➕ 添加新行程</button>
+                <button class="btn" onclick="window.print()" style="margin-left:10px;">🖨️ 打印PDF</button>
             </div>
         </div>
     </div>
     
+    <!-- 同步状态提示 -->
+    <div class="sync-status" id="syncStatus">✓ 已同步</div>
+    
     <script>
+        // Firebase配置 - 请替换为你自己的配置
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // 初始化Firebase
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+        } catch(e) {
+            console.log('Firebase未配置，使用本地模式');
+        }
+        
         let map, isEditMode = false;
+        const TRIP_ID = 'chiangmai-march-2024';
         
         function toggleMap() {
             const section = document.getElementById('mapSection');
@@ -1139,16 +1270,212 @@
             });
         }
         
+        // 添加新项目功能
+        function openAddItemModal() {
+            document.getElementById('addItemModal').classList.add('active');
+        }
+        
+        function closeAddItemModal() {
+            document.getElementById('addItemModal').classList.remove('active');
+            // 清空表单
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemTime').value = '';
+            document.getElementById('itemDesc').value = '';
+        }
+        
+        function saveNewItem() {
+            const day = document.getElementById('itemDay').value;
+            const type = document.getElementById('itemType').value;
+            const name = document.getElementById('itemName').value.trim();
+            const time = document.getElementById('itemTime').value.trim();
+            const desc = document.getElementById('itemDesc').value.trim();
+            
+            if (!name) {
+                alert('请输入名称');
+                return;
+            }
+            
+            const item = {
+                id: Date.now().toString(),
+                day: parseInt(day),
+                type,
+                name,
+                time,
+                desc,
+                createdAt: new Date().toISOString(),
+                createdBy: getDeviceId()
+            };
+            
+            // 保存到Firebase
+            if (db) {
+                db.collection('trips').doc(TRIP_ID).collection('items').doc(item.id).set(item)
+                    .then(() => {
+                        showSyncStatus('✓ 已添加');
+                        renderCustomItem(item);
+                        closeAddItemModal();
+                    })
+                    .catch(err => {
+                        console.error('保存失败:', err);
+                        // 降级到本地存储
+                        saveItemLocally(item);
+                    });
+            } else {
+                saveItemLocally(item);
+            }
+        }
+        
+        function saveItemLocally(item) {
+            let items = JSON.parse(localStorage.getItem('custom-items') || '[]');
+            items.push(item);
+            localStorage.setItem('custom-items', JSON.stringify(items));
+            renderCustomItem(item);
+            closeAddItemModal();
+            showSyncStatus('✓ 已保存到本地');
+        }
+        
+        function renderCustomItem(item) {
+            const dayCards = document.querySelectorAll('.day-card');
+            const dayCard = dayCards[item.day - 1];
+            if (!dayCard) return;
+            
+            const typeLabels = {
+                restaurant: '🍽️ 餐厅',
+                snack: '🍢 小吃',
+                cafe: '☕ 咖啡',
+                spot: '📍 景点',
+                shop: '🛍️ 购物',
+                other: '📝 其他'
+            };
+            
+            const div = document.createElement('div');
+            div.className = 'custom-item';
+            div.id = 'item-' + item.id;
+            div.innerHTML = `
+                <button class="delete-item-btn" onclick="deleteItem('${item.id}')">×</button>
+                <div class="custom-item-header">
+                    <span class="custom-item-name">${item.name}</span>
+                    <span class="custom-item-type">${typeLabels[item.type]}</span>
+                </div>
+                ${item.time ? `<div style="font-size:0.75em;color:#666;margin-bottom:3px;">⏰ ${item.time}</div>` : ''}
+                ${item.desc ? `<div class="custom-item-desc">${item.desc}</div>` : ''}
+            `;
+            
+            // 插入到day-card的末尾（预算之前）
+            dayCard.appendChild(div);
+        }
+        
+        function deleteItem(itemId) {
+            if (!confirm('确定删除这个项目？')) return;
+            
+            if (db) {
+                db.collection('trips').doc(TRIP_ID).collection('items').doc(itemId).delete()
+                    .then(() => {
+                        document.getElementById('item-' + itemId)?.remove();
+                        showSyncStatus('✓ 已删除');
+                    });
+            } else {
+                let items = JSON.parse(localStorage.getItem('custom-items') || '[]');
+                items = items.filter(i => i.id !== itemId);
+                localStorage.setItem('custom-items', JSON.stringify(items));
+                document.getElementById('item-' + itemId)?.remove();
+            }
+        }
+        
+        function loadCustomItems() {
+            // 从Firebase加载
+            if (db) {
+                db.collection('trips').doc(TRIP_ID).collection('items')
+                    .orderBy('createdAt', 'asc')
+                    .onSnapshot(snapshot => {
+                        snapshot.docChanges().forEach(change => {
+                            if (change.type === 'added') {
+                                const item = change.doc.data();
+                                if (!document.getElementById('item-' + item.id)) {
+                                    renderCustomItem(item);
+                                }
+                            } else if (change.type === 'removed') {
+                                document.getElementById('item-' + item.id)?.remove();
+                            }
+                        });
+                        showSyncStatus('✓ 已同步');
+                    }, err => {
+                        console.log('Firebase同步失败，使用本地模式');
+                        loadLocalItems();
+                    });
+            } else {
+                loadLocalItems();
+            }
+        }
+        
+        function loadLocalItems() {
+            const items = JSON.parse(localStorage.getItem('custom-items') || '[]');
+            items.forEach(item => renderCustomItem(item));
+        }
+        
+        function getDeviceId() {
+            let id = localStorage.getItem('device-id');
+            if (!id) {
+                id = 'user-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('device-id', id);
+            }
+            return id;
+        }
+        
+        function showSyncStatus(text) {
+            const status = document.getElementById('syncStatus');
+            status.textContent = text;
+            status.classList.add('show');
+            setTimeout(() => status.classList.remove('show'), 2000);
+        }
+        
+        // 共享备注功能（Firebase）
+        function saveNotesToFirebase(spotId, content) {
+            if (!db) return;
+            db.collection('trips').doc(TRIP_ID).collection('notes').doc(spotId).set({
+                content,
+                updatedAt: new Date().toISOString(),
+                updatedBy: getDeviceId()
+            });
+        }
+        
+        function loadSharedNotes() {
+            if (!db) return;
+            db.collection('trips').doc(TRIP_ID).collection('notes')
+                .onSnapshot(snapshot => {
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        updateNotesDisplay(doc.id, data.content);
+                    });
+                });
+        }
+        
+        // 覆盖原saveNotes函数
+        const originalSaveNotes = saveNotes;
+        saveNotes = function() {
+            if (!currentNotesId) return;
+            const content = document.getElementById('notesTextarea').value.trim();
+            localStorage.setItem('notes-' + currentNotesId, content);
+            updateNotesDisplay(currentNotesId, content);
+            saveNotesToFirebase(currentNotesId, content);
+            closeNotesModal();
+            showSyncStatus('✓ 备注已同步');
+        };
+        
         // 点击模态框外部关闭
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('notesModal').addEventListener('click', function(e) {
                 if (e.target === this) closeNotesModal();
             });
+            document.getElementById('addItemModal').addEventListener('click', function(e) {
+                if (e.target === this) closeAddItemModal();
+            });
         });
         
-        // 加载保存的内容 - 只加载文本内容，不覆盖HTML结构
+        // 加载保存的内容
         window.onload = () => {
             loadAllNotes();
+            loadCustomItems();
+            loadSharedNotes();
         };
     </script>
 </body>
