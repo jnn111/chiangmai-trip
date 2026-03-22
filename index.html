@@ -1294,11 +1294,48 @@
             }
         }
         
-        function saveContent() {
+        async function saveContent() {
             // 保存到localStorage
             const content = document.querySelector('.content').innerHTML;
             localStorage.setItem('chiangmai-trip-content', content);
-            alert('修改已保存！');
+            
+            // 同步到服务器
+            showSyncStatus('⏳ 同步中...');
+            try {
+                // 收集所有编辑过的内容
+                const edits = {};
+                document.querySelectorAll('[contenteditable]').forEach((el, index) => {
+                    const itemId = el.closest('[data-item-id]')?.dataset.itemId;
+                    if (itemId) {
+                        edits[itemId + '-' + index] = el.innerHTML;
+                    }
+                });
+                
+                // 保存到服务器
+                await apiPost('/edits', { content: content });
+                showSyncStatus('✓ 已同步到服务器');
+            } catch (err) {
+                console.log('同步失败:', err);
+                showSyncStatus('✓ 已保存到本地');
+            }
+        }
+        
+        // 加载服务器上的编辑内容
+        async function loadSharedEdits() {
+            try {
+                const result = await apiGet('/edits');
+                if (result.edits && result.edits.content) {
+                    const savedContent = result.edits.content;
+                    const currentContent = localStorage.getItem('chiangmai-trip-content');
+                    
+                    // 如果服务器内容更新，提示用户刷新
+                    if (savedContent !== currentContent && currentContent) {
+                        console.log('服务器有新内容，刷新页面查看');
+                    }
+                }
+            } catch (err) {
+                console.log('加载共享编辑失败');
+            }
         }
         
         function calcTotal() {
@@ -1631,10 +1668,21 @@
         });
         
         // 加载保存的内容
-        window.onload = () => {
+        window.onload = async () => {
+            // 先加载服务器上的编辑内容
+            try {
+                const result = await apiGet('/edits');
+                if (result.edits && result.edits.content) {
+                    document.querySelector('.content').innerHTML = result.edits.content;
+                }
+            } catch (err) {
+                console.log('加载服务器内容失败');
+            }
+            
             loadAllNotes();
             loadCustomItems();
             loadSharedNotes();
+            loadDeletedItems();
         };
     </script>
 </body>
