@@ -6,9 +6,7 @@
     <title>清迈4天3晚深度游 - 宁曼森萨因酒店</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -1121,27 +1119,10 @@
     <div class="sync-status" id="syncStatus">✓ 已同步</div>
     
     <script>
-        // Firebase配置 - 请替换为你自己的配置
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        
-        // 初始化Firebase
-        let db;
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-        } catch(e) {
-            console.log('Firebase未配置，使用本地模式');
-        }
+        // Vercel KV API 配置
+        const API_BASE = window.location.origin + '/api';
         
         let map, isEditMode = false;
-        const TRIP_ID = 'chiangmai-march-2024';
         
         function toggleMap() {
             const section = document.getElementById('mapSection');
@@ -1270,6 +1251,28 @@
             });
         }
         
+        // Vercel KV API 调用
+        async function apiGet(endpoint) {
+            const res = await fetch(`${API_BASE}${endpoint}`);
+            return res.json();
+        }
+        
+        async function apiPost(endpoint, data) {
+            const res = await fetch(`${API_BASE}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            return res.json();
+        }
+        
+        async function apiDelete(endpoint, id) {
+            const res = await fetch(`${API_BASE}${endpoint}?id=${id}`, {
+                method: 'DELETE'
+            });
+            return res.json();
+        }
+        
         // 添加新项目功能
         function openAddItemModal() {
             document.getElementById('addItemModal').classList.add('active');
@@ -1277,13 +1280,12 @@
         
         function closeAddItemModal() {
             document.getElementById('addItemModal').classList.remove('active');
-            // 清空表单
             document.getElementById('itemName').value = '';
             document.getElementById('itemTime').value = '';
             document.getElementById('itemDesc').value = '';
         }
         
-        function saveNewItem() {
+        async function saveNewItem() {
             const day = document.getElementById('itemDay').value;
             const type = document.getElementById('itemType').value;
             const name = document.getElementById('itemName').value.trim();
@@ -1295,31 +1297,24 @@
                 return;
             }
             
-            const item = {
-                id: Date.now().toString(),
-                day: parseInt(day),
-                type,
-                name,
-                time,
-                desc,
-                createdAt: new Date().toISOString(),
-                createdBy: getDeviceId()
-            };
+            showSyncStatus('⏳ 保存中...');
             
-            // 保存到Firebase
-            if (db) {
-                db.collection('trips').doc(TRIP_ID).collection('items').doc(item.id).set(item)
-                    .then(() => {
-                        showSyncStatus('✓ 已添加');
-                        renderCustomItem(item);
-                        closeAddItemModal();
-                    })
-                    .catch(err => {
-                        console.error('保存失败:', err);
-                        // 降级到本地存储
-                        saveItemLocally(item);
-                    });
-            } else {
+            try {
+                const result = await apiPost('/items', { day, type, name, time, desc });
+                if (result.item) {
+                    renderCustomItem(result.item);
+                    closeAddItemModal();
+                    showSyncStatus('✓ 已添加');
+                }
+            } catch (err) {
+                console.error('保存失败:', err);
+                // 降级到本地
+                const item = {
+                    id: Date.now().toString(),
+                    day: parseInt(day),
+                    type, name, time, desc,
+                    createdAt: new Date().toISOString()
+                };
                 saveItemLocally(item);
             }
         }
@@ -1336,7 +1331,7 @@
         function renderCustomItem(item) {
             const dayCards = document.querySelectorAll('.day-card');
             const dayCard = dayCards[item.day - 1];
-            if (!dayCard) return;
+            if (!dayCard || document.getElementById('item-' + item.id)) return;
             
             const typeLabels = {
                 restaurant: '🍽️ 餐厅',
@@ -1360,20 +1355,18 @@
                 ${item.desc ? `<div class="custom-item-desc">${item.desc}</div>` : ''}
             `;
             
-            // 插入到day-card的末尾（预算之前）
             dayCard.appendChild(div);
         }
         
-        function deleteItem(itemId) {
+        async function deleteItem(itemId) {
             if (!confirm('确定删除这个项目？')) return;
             
-            if (db) {
-                db.collection('trips').doc(TRIP_ID).collection('items').doc(itemId).delete()
-                    .then(() => {
-                        document.getElementById('item-' + itemId)?.remove();
-                        showSyncStatus('✓ 已删除');
-                    });
-            } else {
+            try {
+                await apiDelete('/items', itemId);
+                document.getElementById('item-' + itemId)?.remove();
+                showSyncStatus('✓ 已删除');
+            } catch (err) {
+                // 本地删除
                 let items = JSON.parse(localStorage.getItem('custom-items') || '[]');
                 items = items.filter(i => i.id !== itemId);
                 localStorage.setItem('custom-items', JSON.stringify(items));
@@ -1381,84 +1374,55 @@
             }
         }
         
-        function loadCustomItems() {
-            // 从Firebase加载
-            if (db) {
-                db.collection('trips').doc(TRIP_ID).collection('items')
-                    .orderBy('createdAt', 'asc')
-                    .onSnapshot(snapshot => {
-                        snapshot.docChanges().forEach(change => {
-                            if (change.type === 'added') {
-                                const item = change.doc.data();
-                                if (!document.getElementById('item-' + item.id)) {
-                                    renderCustomItem(item);
-                                }
-                            } else if (change.type === 'removed') {
-                                document.getElementById('item-' + item.id)?.remove();
-                            }
-                        });
-                        showSyncStatus('✓ 已同步');
-                    }, err => {
-                        console.log('Firebase同步失败，使用本地模式');
-                        loadLocalItems();
+        async function loadCustomItems() {
+            try {
+                const result = await apiGet('/items');
+                if (result.items) {
+                    result.items.forEach(item => renderCustomItem(item));
+                }
+            } catch (err) {
+                console.log('API加载失败，使用本地数据');
+                const items = JSON.parse(localStorage.getItem('custom-items') || '[]');
+                items.forEach(item => renderCustomItem(item));
+            }
+        }
+        
+        async function loadSharedNotes() {
+            try {
+                const result = await apiGet('/notes');
+                if (result.notes) {
+                    Object.entries(result.notes).forEach(([spotId, data]) => {
+                        updateNotesDisplay(spotId, data.content);
                     });
-            } else {
-                loadLocalItems();
+                }
+            } catch (err) {
+                console.log('备注API加载失败');
             }
-        }
-        
-        function loadLocalItems() {
-            const items = JSON.parse(localStorage.getItem('custom-items') || '[]');
-            items.forEach(item => renderCustomItem(item));
-        }
-        
-        function getDeviceId() {
-            let id = localStorage.getItem('device-id');
-            if (!id) {
-                id = 'user-' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('device-id', id);
-            }
-            return id;
         }
         
         function showSyncStatus(text) {
             const status = document.getElementById('syncStatus');
             status.textContent = text;
             status.classList.add('show');
-            setTimeout(() => status.classList.remove('show'), 2000);
-        }
-        
-        // 共享备注功能（Firebase）
-        function saveNotesToFirebase(spotId, content) {
-            if (!db) return;
-            db.collection('trips').doc(TRIP_ID).collection('notes').doc(spotId).set({
-                content,
-                updatedAt: new Date().toISOString(),
-                updatedBy: getDeviceId()
-            });
-        }
-        
-        function loadSharedNotes() {
-            if (!db) return;
-            db.collection('trips').doc(TRIP_ID).collection('notes')
-                .onSnapshot(snapshot => {
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        updateNotesDisplay(doc.id, data.content);
-                    });
-                });
+            if (text !== '⏳ 保存中...') {
+                setTimeout(() => status.classList.remove('show'), 2000);
+            }
         }
         
         // 覆盖原saveNotes函数
-        const originalSaveNotes = saveNotes;
-        saveNotes = function() {
+        saveNotes = async function() {
             if (!currentNotesId) return;
             const content = document.getElementById('notesTextarea').value.trim();
             localStorage.setItem('notes-' + currentNotesId, content);
             updateNotesDisplay(currentNotesId, content);
-            saveNotesToFirebase(currentNotesId, content);
+            
+            try {
+                await apiPost('/notes', { spotId: currentNotesId, content });
+                showSyncStatus('✓ 备注已同步');
+            } catch (err) {
+                showSyncStatus('✓ 已保存到本地');
+            }
             closeNotesModal();
-            showSyncStatus('✓ 备注已同步');
         };
         
         // 点击模态框外部关闭
