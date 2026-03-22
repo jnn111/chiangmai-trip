@@ -1295,28 +1295,21 @@
         }
         
         async function saveContent() {
-            // 保存到localStorage
-            const content = document.querySelector('.content').innerHTML;
-            localStorage.setItem('chiangmai-trip-content', content);
-            
             // 同步到服务器
             showSyncStatus('⏳ 同步中...');
             try {
-                // 收集所有编辑过的内容
-                const edits = {};
-                document.querySelectorAll('[contenteditable]').forEach((el, index) => {
-                    const itemId = el.closest('[data-item-id]')?.dataset.itemId;
-                    if (itemId) {
-                        edits[itemId + '-' + index] = el.innerHTML;
-                    }
-                });
+                const content = document.querySelector('.content').innerHTML;
                 
                 // 保存到服务器
                 await apiPost('/edits', { content: content });
-                showSyncStatus('✓ 已同步到服务器');
+                showSyncStatus('✓ 已同步');
+                
+                // 自动刷新页面
+                window.location.reload();
             } catch (err) {
                 console.log('同步失败:', err);
-                showSyncStatus('✓ 已保存到本地');
+                showSyncStatus('✗ 同步失败');
+                alert('同步失败，请检查网络');
             }
         }
         
@@ -1667,9 +1660,9 @@
             });
         });
         
-        // 加载保存的内容
+        // 加载保存的内容 - 只从服务器加载，实现共享
         window.onload = async () => {
-            // 先加载服务器上的编辑内容
+            // 只加载服务器上的内容
             try {
                 const result = await apiGet('/edits');
                 if (result.edits && result.edits.content) {
@@ -1679,10 +1672,9 @@
                 console.log('加载服务器内容失败');
             }
             
-            loadAllNotes();
+            // 加载其他共享数据
             loadCustomItems();
             loadSharedNotes();
-            loadDeletedItems();
         };
     </script>
 </body>
