@@ -1,46 +1,22 @@
-import fs from 'fs';
-import path from 'path';
+// 使用 Upstash Redis - 可靠的云端数据库
+import { Redis } from '@upstash/redis';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'trip-data.json');
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || ''
+});
+
+const TRIP_KEY = 'chiangmai:trip:data';
 
 // 初始化数据结构
 function initData() {
   return {
-    items: [],        // 新增的行程项目
-    deletedItems: [], // 删除的项目ID列表
-    edits: {},        // 编辑的内容 { itemId: { field: value } }
-    notes: {},        // 备注 { spotId: content }
+    items: [],
+    deletedItems: [],
+    edits: {},
+    notes: {},
     updatedAt: new Date().toISOString()
   };
-}
-
-// 确保数据目录存在
-function ensureDataDir() {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initData(), null, 2));
-  }
-}
-
-// 读取数据
-function readData() {
-  ensureDataDir();
-  try {
-    const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch {
-    return initData();
-  }
-}
-
-// 写入数据
-function writeData(data) {
-  ensureDataDir();
-  data.updatedAt = new Date().toISOString();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 export default async function handler(req, res) {
@@ -54,18 +30,17 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const data = readData();
+      const data = await redis.get(TRIP_KEY) || initData();
       return res.status(200).json(data);
     }
 
     if (req.method === 'POST') {
-      // 添加新项目
       const { item } = req.body;
       if (!item || !item.name) {
         return res.status(400).json({ error: 'item.name required' });
       }
 
-      const data = readData();
+      const data = await redis.get(TRIP_KEY) || initData();
       const newItem = {
         id: Date.now().toString(),
         day: parseInt(item.day) || 1,
@@ -77,49 +52,48 @@ export default async function handler(req, res) {
       };
       
       data.items.push(newItem);
-      writeData(data);
+      data.updatedAt = new Date().toISOString();
+      await redis.set(TRIP_KEY, data);
       
       return res.status(200).json({ item: newItem });
     }
 
     if (req.method === 'PUT') {
-      // 更新编辑内容
       const { itemId, field, value } = req.body;
       if (!itemId || !field) {
         return res.status(400).json({ error: 'itemId and field required' });
       }
 
-      const data = readData();
+      const data = await redis.get(TRIP_KEY) || initData();
       if (!data.edits[itemId]) {
         data.edits[itemId] = {};
       }
       data.edits[itemId][field] = value;
-      writeData(data);
+      data.updatedAt = new Date().toISOString();
+      await redis.set(TRIP_KEY, data);
       
       return res.status(200).json({ success: true });
     }
 
     if (req.method === 'DELETE') {
-      // 删除项目
       const { id, type } = req.query;
       
-      const data = readData();
+      const data = await redis.get(TRIP_KEY) || initData();
       
       if (type === 'preset') {
-        // 删除预设项目，记录到 deletedItems
         data.deletedItems.push(id);
       } else {
-        // 删除自定义项目，从 items 中移除
         data.items = data.items.filter(item => item.id !== id);
       }
       
-      writeData(data);
+      data.updatedAt = new Date().toISOString();
+      await redis.set(TRIP_KEY, data);
       return res.status(200).json({ success: true });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('API Error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: error.message });
   }
 }
