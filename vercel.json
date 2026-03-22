@@ -1,4 +1,7 @@
 {
   "version": 2,
-  "name": "chiangmai-trip"
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
