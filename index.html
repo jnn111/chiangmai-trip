@@ -189,6 +189,28 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            position: relative;
+        }
+        .cafe-delete-btn {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.6em;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+        }
+        .cafe-item:hover .cafe-delete-btn {
+            display: flex;
         }
         .cafe-tag {
             background: #ce93d8;
@@ -383,6 +405,75 @@
             align-items: center;
             justify-content: center;
         }
+        .spot-card {
+            position: relative;
+        }
+        .spot-delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.8em;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .spot-card:hover .spot-delete-btn {
+            display: flex;
+        }
+        .cafe-card {
+            position: relative;
+        }
+        .cafe-delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.7em;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .cafe-card:hover .cafe-delete-btn {
+            display: flex;
+        }
+        .food-box {
+            position: relative;
+        }
+        .food-delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.65em;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .food-box:hover .food-delete-btn {
+            display: flex;
+        }
         .sync-status {
             position: fixed;
             bottom: 20px;
@@ -501,7 +592,8 @@
                     <button class="day-route-btn" onclick="showRoute(1)">查看路线</button>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7667" data-lng="98.9667">
+                <div class="spot-card" data-lat="18.7667" data-lng="98.9667" data-item-id="airport">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('airport')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=200" class="spot-image" alt="机场">
                         <div class="spot-info-header">
@@ -526,7 +618,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7963" data-lng="98.9795">
+                <div class="spot-card" data-lat="18.7963" data-lng="98.9795" data-item-id="hotel-checkin">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('hotel-checkin')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1555212697-194d092e3b8f?w=200" class="spot-image" alt="酒店">
                         <div class="spot-info-header">
@@ -543,12 +636,14 @@
                 
                 <div class="cafe-section">
                     <h4>☕ 午餐咖啡5选（酒店步行5-10分钟）</h4>
-                    <div class="cafe-item">
+                    <div class="cafe-item" data-item-id="cafe-ristr8to">
+                        <button class="cafe-delete-btn" onclick="deletePresetItem('cafe-ristr8to')">×</button>
                         <strong>1. Ristr8to</strong>
                         <span class="cafe-tag">拉花冠军</span>
                         <span style="color:#666;margin-left:auto">步行8分钟 | 独角兽拉花120฿</span>
                     </div>
-                    <div class="cafe-item">
+                    <div class="cafe-item" data-item-id="cafe-no39">
+                        <button class="cafe-delete-btn" onclick="deletePresetItem('cafe-no39')">×</button>
                         <strong>2. No.39 Cafe</strong>
                         <span class="cafe-tag">网红滑梯</span>
                         <span style="color:#666;margin-left:auto">Grab 5分钟 | 蓝色滑梯150฿</span>
@@ -574,7 +669,8 @@
                     <strong>🍜 午餐推荐：</strong>Kao Soy Nimman（邓丽君最爱泰北咖喱面，酒店步行10分钟，人均150泰铢）
                 </div>
                 
-                <div class="spot-card" data-lat="18.7883" data-lng="98.9853">
+                <div class="spot-card" data-lat="18.7883" data-lng="98.9853" data-item-id="tha-phae">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('tha-phae')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=200" class="spot-image" alt="塔佩门">
                         <div class="spot-info-header">
@@ -594,7 +690,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7907" data-lng="98.9867">
+                <div class="spot-card" data-lat="18.7907" data-lng="98.9867" data-item-id="chedi-luang">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('chedi-luang')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1598935898639-33d885d54861?w=200" class="spot-image" alt="契迪龙寺">
                         <div class="spot-info-header">
@@ -613,7 +710,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7887" data-lng="98.9850">
+                <div class="spot-card" data-lat="18.7887" data-lng="98.9850" data-item-id="phra-singh">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('phra-singh')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=200" class="spot-image" alt="帕辛寺">
                         <div class="spot-info-header">
@@ -632,7 +730,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7883" data-lng="98.9853">
+                <div class="spot-card" data-lat="18.7883" data-lng="98.9853" data-item-id="sunday-market">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('sunday-market')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=200" class="spot-image" alt="周日夜市">
                         <div class="spot-info-header">
@@ -646,7 +745,8 @@
                     <div class="spot-details" contenteditable="false">
                         全泰国最大夜市！从塔佩门到帕辛寺数公里长。手工艺品、美食、按摩一条街。
                     </div>
-                    <div class="food-box">
+                    <div class="food-box" data-item-id="sunday-food">
+                        <button class="food-delete-btn" onclick="deletePresetItem('sunday-food')">×</button>
                         <strong>夜市必吃：</strong>Mango Tango芒果糯米饭 | 烤猪肉串10฿ | 椰子冰淇淋 | Khao Soi Islam
                     </div>
                     <div class="transport-box">
@@ -698,7 +798,8 @@
                     💡 提前一天淘宝/Klook预订，或请酒店代订
                 </div>
                 
-                <div class="spot-card" data-lat="19.1167" data-lng="99.0500">
+                <div class="spot-card" data-lat="19.1167" data-lng="99.0500" data-item-id="sticky-waterfall">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('sticky-waterfall')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=200" class="spot-image" alt="粘粘瀑布">
                         <div class="spot-info-header">
@@ -728,7 +829,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="19.1200" data-lng="99.0600">
+                <div class="spot-card" data-lat="19.1200" data-lng="99.0600" data-item-id="angel-waterfall">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('angel-waterfall')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=200" class="spot-image" alt="天使瀑布">
                         <div class="spot-info-header">
@@ -748,7 +850,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="19.1100" data-lng="99.0400">
+                <div class="spot-card" data-lat="19.1100" data-lng="99.0400" data-item-id="elefin-cafe">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('elefin-cafe')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?w=200" class="spot-image" alt="大象咖啡">
                         <div class="spot-info-header">
@@ -796,7 +899,7 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7963" data-lng="98.9795">
+                <div class="spot-card" data-lat="18.7963" data-lng="98.9795" data-item-id="hotel-checkin">
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1555212697-194d092e3b8f?w=200" class="spot-image" alt="宁曼路">
                         <div class="spot-info-header">
@@ -838,7 +941,8 @@
                     下午：包车半日（艺术村→大象营→素贴山→回酒店）1500泰铢
                 </div>
                 
-                <div class="spot-card" data-lat="18.8200" data-lng="98.9700">
+                <div class="spot-card" data-lat="18.8200" data-lng="98.9700" data-item-id="art-village">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('art-village')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1513519245088-0e12902e35ca?w=200" class="spot-image" alt="艺术村">
                         <div class="spot-info-header">
@@ -896,7 +1000,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.8300" data-lng="98.9600">
+                <div class="spot-card" data-lat="18.8300" data-lng="98.9600" data-item-id="elephant-camp">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('elephant-camp')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?w=200" class="spot-image" alt="大象营">
                         <div class="spot-info-header">
@@ -917,7 +1022,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.8050" data-lng="98.9210">
+                <div class="spot-card" data-lat="18.8050" data-lng="98.9210" data-item-id="doi-suthep">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('doi-suthep')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=200" class="spot-image" alt="素贴山">
                         <div class="spot-info-header">
@@ -952,7 +1058,8 @@
                     <button class="day-route-btn" onclick="showRoute(4)">查看路线</button>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7900" data-lng="99.0000">
+                <div class="spot-card" data-lat="18.7900" data-lng="99.0000" data-item-id="warorot-market">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('warorot-market')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1555212697-194d092e3b8f?w=200" class="spot-image" alt="瓦洛洛">
                         <div class="spot-info-header">
@@ -1000,7 +1107,8 @@
                     </div>
                 </div>
                 
-                <div class="spot-card" data-lat="18.7667" data-lng="98.9667">
+                <div class="spot-card" data-lat="18.7667" data-lng="98.9667" data-item-id="airport-departure">
+                    <button class="spot-delete-btn" onclick="deletePresetItem('airport-departure')">×</button>
                     <div class="spot-header">
                         <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=200" class="spot-image" alt="机场">
                         <div class="spot-info-header">
@@ -1236,6 +1344,37 @@
                     display.classList.add('empty');
                 }
             }
+        }
+        
+        // 删除预设项目
+        function deletePresetItem(itemId) {
+            if (!confirm('确定删除这个项目？')) return;
+            
+            // 从DOM中删除
+            const element = document.querySelector(`[data-item-id="${itemId}"]`);
+            if (element) {
+                // 如果是food-box，只删除food-box
+                if (element.classList.contains('food-box')) {
+                    element.remove();
+                } else {
+                    // 否则删除整个spot-card
+                    element.remove();
+                }
+                
+                // 保存删除状态到localStorage
+                let deletedItems = JSON.parse(localStorage.getItem('deleted-items') || '[]');
+                deletedItems.push(itemId);
+                localStorage.setItem('deleted-items', JSON.stringify(deletedItems));
+            }
+        }
+        
+        // 加载时恢复删除状态
+        function loadDeletedItems() {
+            const deletedItems = JSON.parse(localStorage.getItem('deleted-items') || '[]');
+            deletedItems.forEach(itemId => {
+                const element = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (element) element.remove();
+            });
         }
         
         function loadAllNotes() {
