@@ -1295,21 +1295,33 @@
         }
         
         async function saveContent() {
-            // 同步到服务器
             showSyncStatus('⏳ 同步中...');
+            
             try {
-                const content = document.querySelector('.content').innerHTML;
+                // 收集所有编辑过的元素
+                const editPromises = [];
                 
-                // 保存到服务器
-                await apiPost('/edits', { content: content });
+                document.querySelectorAll('[contenteditable]').forEach((el) => {
+                    const itemId = el.closest('[data-item-id]')?.dataset.itemId;
+                    const field = el.classList.contains('spot-name') ? 'name' : 
+                                  el.classList.contains('spot-details') ? 'details' : 'content';
+                    
+                    if (itemId && el.innerHTML) {
+                        editPromises.push(apiEditItem(itemId, field, el.innerHTML));
+                    }
+                });
+                
+                // 等待所有编辑保存完成
+                await Promise.all(editPromises);
+                
                 showSyncStatus('✓ 已同步');
                 
                 // 自动刷新页面
-                window.location.reload();
+                setTimeout(() => window.location.reload(), 500);
             } catch (err) {
-                console.log('同步失败:', err);
+                console.error('同步失败:', err);
                 showSyncStatus('✗ 同步失败');
-                alert('同步失败，请检查网络');
+                alert('同步失败，请重试');
             }
         }
         
@@ -1377,24 +1389,25 @@
         }
         
         // 删除预设项目
-        function deletePresetItem(itemId) {
+        async function deletePresetItem(itemId) {
             if (!confirm('确定删除这个项目？')) return;
             
-            // 从DOM中删除
-            const element = document.querySelector(`[data-item-id="${itemId}"]`);
-            if (element) {
-                // 如果是food-box，只删除food-box
-                if (element.classList.contains('food-box')) {
-                    element.remove();
-                } else {
-                    // 否则删除整个spot-card
+            showSyncStatus('⏳ 删除中...');
+            
+            try {
+                // 同步到服务器
+                await apiDeleteItem(itemId, 'preset');
+                
+                // 从DOM中删除
+                const element = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (element) {
                     element.remove();
                 }
                 
-                // 保存删除状态到localStorage
-                let deletedItems = JSON.parse(localStorage.getItem('deleted-items') || '[]');
-                deletedItems.push(itemId);
-                localStorage.setItem('deleted-items', JSON.stringify(deletedItems));
+                showSyncStatus('✓ 已删除');
+            } catch (err) {
+                console.error('删除失败:', err);
+                showSyncStatus('✗ 删除失败');
             }
         }
         
@@ -1420,23 +1433,34 @@
             });
         }
         
-        // Vercel KV API 调用
-        async function apiGet(endpoint) {
-            const res = await fetch(`${API_BASE}${endpoint}`);
+        // 统一 API 调用
+        const API_URL = `${API_BASE}/trip-data`;
+        
+        async function apiGetAll() {
+            const res = await fetch(API_URL);
             return res.json();
         }
         
-        async function apiPost(endpoint, data) {
-            const res = await fetch(`${API_BASE}${endpoint}`, {
+        async function apiAddItem(item) {
+            const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ item })
             });
             return res.json();
         }
         
-        async function apiDelete(endpoint, id) {
-            const res = await fetch(`${API_BASE}${endpoint}?id=${id}`, {
+        async function apiEditItem(itemId, field, value) {
+            const res = await fetch(API_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itemId, field, value })
+            });
+            return res.json();
+        }
+        
+        async function apiDeleteItem(id, type = 'custom') {
+            const res = await fetch(`${API_URL}?id=${id}&type=${type}`, {
                 method: 'DELETE'
             });
             return res.json();
@@ -1469,22 +1493,16 @@
             showSyncStatus('⏳ 保存中...');
             
             try {
-                const result = await apiPost('/items', { day, type, name, time, desc });
+                const result = await apiAddItem({ day, type, name, time, desc });
                 if (result.item) {
                     renderCustomItem(result.item);
                     closeAddItemModal();
-                    showSyncStatus('✓ 已添加');
+                    showSyncStatus('✓ 已同步');
                 }
             } catch (err) {
                 console.error('保存失败:', err);
-                // 降级到本地
-                const item = {
-                    id: Date.now().toString(),
-                    day: parseInt(day),
-                    type, name, time, desc,
-                    createdAt: new Date().toISOString()
-                };
-                saveItemLocally(item);
+                showSyncStatus('✗ 保存失败');
+                alert('保存失败，请重试');
             }
         }
         
@@ -1586,16 +1604,15 @@
         async function deleteItem(itemId) {
             if (!confirm('确定删除这个项目？')) return;
             
+            showSyncStatus('⏳ 删除中...');
+            
             try {
-                await apiDelete('/items', itemId);
+                await apiDeleteItem(itemId, 'custom');
                 document.getElementById('item-' + itemId)?.remove();
                 showSyncStatus('✓ 已删除');
             } catch (err) {
-                // 本地删除
-                let items = JSON.parse(localStorage.getItem('custom-items') || '[]');
-                items = items.filter(i => i.id !== itemId);
-                localStorage.setItem('custom-items', JSON.stringify(items));
-                document.getElementById('item-' + itemId)?.remove();
+                console.error('删除失败:', err);
+                showSyncStatus('✗ 删除失败');
             }
         }
         
@@ -1660,21 +1677,50 @@
             });
         });
         
-        // 加载保存的内容 - 只从服务器加载，实现共享
+        // 加载保存的内容 - 从统一 API 加载
         window.onload = async () => {
-            // 只加载服务器上的内容
             try {
-                const result = await apiGet('/edits');
-                if (result.edits && result.edits.content) {
-                    document.querySelector('.content').innerHTML = result.edits.content;
+                const data = await apiGetAll();
+                
+                // 1. 应用删除的预设项目
+                if (data.deletedItems) {
+                    data.deletedItems.forEach(itemId => {
+                        const element = document.querySelector(`[data-item-id="${itemId}"]`);
+                        if (element) element.remove();
+                    });
                 }
+                
+                // 2. 应用编辑的内容
+                if (data.edits) {
+                    Object.entries(data.edits).forEach(([itemId, fields]) => {
+                        Object.entries(fields).forEach(([field, value]) => {
+                            let selector;
+                            if (field === 'name') selector = `[data-item-id="${itemId}"] .spot-name`;
+                            else if (field === 'details') selector = `[data-item-id="${itemId}"] .spot-details`;
+                            else selector = `[data-item-id="${itemId}"]`;
+                            
+                            const element = document.querySelector(selector);
+                            if (element) element.innerHTML = value;
+                        });
+                    });
+                }
+                
+                // 3. 渲染新增的项目
+                if (data.items) {
+                    data.items.forEach(item => renderCustomItem(item));
+                }
+                
+                // 4. 加载备注
+                if (data.notes) {
+                    Object.entries(data.notes).forEach(([spotId, content]) => {
+                        updateNotesDisplay(spotId, content);
+                    });
+                }
+                
+                console.log('数据加载完成');
             } catch (err) {
-                console.log('加载服务器内容失败');
+                console.log('加载服务器数据失败:', err);
             }
-            
-            // 加载其他共享数据
-            loadCustomItems();
-            loadSharedNotes();
         };
     </script>
 </body>
